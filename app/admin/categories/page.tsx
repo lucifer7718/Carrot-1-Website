@@ -63,7 +63,7 @@ export default async function AdminCategoriesPage() {
               </thead>
 
               <tbody>
-                {categories.map((category) => (
+                {categories.map((category: any) => (
                   <tr key={category.id} className="border-t border-[#f0ebe3]">
                     <td className="px-6 py-4 text-sm font-semibold text-[#1f1f1f]">
                       {category.name}
