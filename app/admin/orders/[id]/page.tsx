@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 function formatPrice(amount: number) {
@@ -35,6 +36,18 @@ function statusClasses(status: string) {
   }
 }
 
+const orderWithItems = Prisma.validator<Prisma.OrderDefaultArgs>()({
+  include: {
+    items: {
+      include: {
+        product: true,
+      },
+    },
+  },
+});
+
+type OrderWithItems = Prisma.OrderGetPayload<typeof orderWithItems>;
+
 export default async function AdminOrderDetailsPage({
   params,
 }: {
@@ -42,7 +55,7 @@ export default async function AdminOrderDetailsPage({
 }) {
   const { id } = await params;
 
-  const order = await prisma.order.findUnique({
+  const order: OrderWithItems | null = await prisma.order.findUnique({
     where: {
       id,
     },
@@ -168,7 +181,9 @@ export default async function AdminOrderDetailsPage({
 
               <div>
                 <p className="font-semibold text-[#1f1f1f]">Address</p>
-                <p className="mt-1 text-[#777]">Address field is not available in your current order model.</p>
+                <p className="mt-1 text-[#777]">
+                  Address field is not available in your current order model.
+                </p>
               </div>
             </div>
           </div>
@@ -207,7 +222,12 @@ export default async function AdminOrderDetailsPage({
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-[#1f1f1f]">Total amount</span>
                   <span className="text-lg font-bold text-[#C8470A]">
-                    {formatPrice(order.items.reduce((sum, item) => sum + item.price * item.quantity, 0))}
+                    {formatPrice(
+                      order.items.reduce(
+                        (sum, item) => sum + item.price * item.quantity,
+                        0
+                      )
+                    )}
                   </span>
                 </div>
               </div>

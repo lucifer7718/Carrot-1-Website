@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { razorpay } from "@/lib/razorpay";
+import { getRazorpayInstance } from "@/lib/razorpay";
 
 function formatPrice(amount: number) {
   return Math.round(amount * 100);
 }
+
+type CheckoutItem = {
+  id: string;
+  name?: string;
+  price?: string | number;
+  quantity?: number;
+  size?: string;
+};
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +27,7 @@ export async function POST(request: Request) {
     const state = String(body.state || "").trim();
     const postalCode = String(body.postalCode || "").trim();
     const total = Number(body.total || 0);
-    const items = Array.isArray(body.items) ? body.items : [];
+    const items: CheckoutItem[] = Array.isArray(body.items) ? body.items : [];
 
     if (!customerName || !email || !phone || !addressLine1 || !city || !state || !postalCode) {
       return NextResponse.json(
@@ -78,7 +86,7 @@ export async function POST(request: Request) {
         total,
         status: "PENDING",
         items: {
-          create: items.map((item: any) => ({
+          create: items.map((item) => ({
             productId: String(item.id),
             name: String(item.name || ""),
             price: Number(String(item.price || "").replace(/[^\d]/g, "")) || 0,
@@ -93,6 +101,7 @@ export async function POST(request: Request) {
     });
 
     const amountInPaise = formatPrice(total);
+    const razorpay = getRazorpayInstance();
 
     const razorpayOrder = await razorpay.orders.create({
       amount: amountInPaise,
