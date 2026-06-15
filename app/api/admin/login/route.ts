@@ -4,6 +4,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const password = body?.password;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!password) {
       return NextResponse.json(
@@ -12,7 +13,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password !== process.env.ADMIN_PASSWORD) {
+    if (!adminPassword) {
+      return NextResponse.json(
+        { success: false, message: "ADMIN_PASSWORD is not set on the server" },
+        { status: 500 }
+      );
+    }
+
+    if (password !== adminPassword) {
       return NextResponse.json(
         { success: false, message: "Invalid password" },
         { status: 401 }
