@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function AdminCustomersPage() {
   return (
     <section className="space-y-6">
@@ -11,9 +14,10 @@ export default function AdminCustomersPage() {
       <div className="rounded-2xl border border-[#e7e1d7] bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-[#1f1f1f]">Guest checkout mode</h2>
         <p className="mt-3 text-sm leading-6 text-[#666]">
-          Your store is currently using guest checkout only. That means customers do not have accounts
-          or order history login access right now. Later, this section can still help you review names,
-          emails, phone numbers, and shipping details collected from orders.
+          Your store is currently using guest checkout only. That means customers do not
+          have accounts or order history login access right now. Later, this section can
+          still help you review names, emails, phone numbers, and shipping details
+          collected from orders.
         </p>
       </div>
 
