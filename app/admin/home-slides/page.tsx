@@ -1,6 +1,7 @@
 import Link from "next/link";
-import type { HomeSlide } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type HomeSlide = Awaited<ReturnType<typeof prisma.homeSlide.findMany>>[number];
 
 export default async function AdminHomeSlidesPage() {
   const slides: HomeSlide[] = await prisma.homeSlide.findMany({
