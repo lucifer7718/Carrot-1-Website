@@ -1,12 +1,10 @@
 import Link from "next/link";
+import type { HomeSlide } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminHomeSlidesPage() {
-  const slides = await prisma.homeSlide.findMany({
-    orderBy: [
-      { sortOrder: "asc" },
-      { createdAt: "desc" },
-    ],
+  const slides: HomeSlide[] = await prisma.homeSlide.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
   });
 
   return (
@@ -69,7 +67,7 @@ export default async function AdminHomeSlidesPage() {
                       {slide.image ? (
                         <img
                           src={slide.image}
-                          alt={slide.title}
+                          alt={slide.title || "Slide image"}
                           className="h-16 w-24 rounded-xl border border-[#ece6dd] object-cover"
                         />
                       ) : (
@@ -80,7 +78,9 @@ export default async function AdminHomeSlidesPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <p className="font-semibold text-[#1f1f1f]">{slide.title}</p>
+                      <p className="font-semibold text-[#1f1f1f]">
+                        {slide.title || "Untitled slide"}
+                      </p>
                       <p className="mt-1 text-xs text-[#777]">
                         {slide.subtitle || "No subtitle"}
                       </p>
