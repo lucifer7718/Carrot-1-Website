@@ -1,65 +1,186 @@
-import Image from "next/image";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import HomeHeroSlider from "@/components/HomeHeroSlider";
 
-export default function Home() {
+function formatPrice(amount: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export default async function HomePage() {
+  const [featuredProducts, homeSlides, settings] = await Promise.all([
+    prisma.product.findMany({
+      where: {
+        featured: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        category: true,
+      },
+    }),
+    prisma.homeSlide.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    }),
+    prisma.siteSettings.findFirst(),
+  ]);
+
+  const siteName = settings?.siteName || "Carrot";
+  const logoText = settings?.logoText || siteName;
+
+  const heroSlides =
+    homeSlides.length > 0
+      ? homeSlides.map((slide) => ({
+          id: slide.id,
+          title: slide.title,
+          subtitle: slide.subtitle,
+          buttonText: slide.buttonText,
+          buttonLink: slide.buttonLink,
+          image: slide.image,
+          mobileImage: slide.mobileImage,
+        }))
+      : [
+          {
+            id: "fallback-slide",
+            title: logoText,
+            subtitle: "Crafted with care. Defined by art.",
+            buttonText: "Shop Now",
+            buttonLink: "/shop",
+            image: "",
+            mobileImage: null,
+          },
+        ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="relative bg-[#FAFAF8]">
+      <HomeHeroSlider siteName={siteName} slides={heroSlides} />
+
+      <section className="mx-auto max-w-[1200px] px-6 py-20">
+        <h2 className="mb-12 text-center text-2xl font-bold text-[#1A1A1A] md:text-3xl">
+          Featured Collection
+        </h2>
+
+        {featuredProducts.length === 0 ? (
+          <div className="rounded-2xl border border-[#e7e1d7] bg-white p-10 text-center text-sm text-[#777]">
+            No featured products available yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            {featuredProducts.map((product) => (
+              <div key={product.id} className="group">
+                <Link href={`/product/${product.slug}`} className="block">
+                  <div className="relative mb-5 aspect-[3/4] overflow-hidden rounded-2xl bg-gradient-to-br from-[#F2E8DC] to-[#e6e4df] shadow-sm transition-all group-hover:shadow-lg">
+                    {product.images?.[0] ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <div className="text-center">
+                          <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#C8470A]/20 bg-[#C8470A]/10">
+                            <span className="text-3xl font-bold text-[#C8470A]">
+                              T
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium uppercase tracking-wider text-[#7a7974]">
+                            {siteName} Product
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <h3 className="mb-1 text-lg font-semibold text-[#1A1A1A] transition-colors hover:text-[#C8470A]">
+                    {product.name}
+                  </h3>
+                </Link>
+
+                <p className="mb-2 text-sm text-[#777]">
+                  {product.category?.name || "Uncategorized"}
+                </p>
+
+                <p className="mb-4 text-lg font-bold text-[#C8470A]">
+                  {formatPrice(product.price)}
+                </p>
+
+                <Link
+                  href={`/product/${product.slug}`}
+                  className="block w-full rounded-xl bg-[#1A1A1A] py-3.5 text-center text-sm font-medium text-white shadow-md transition-colors hover:bg-[#333] hover:shadow-lg"
+                >
+                  View Product
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="bg-gradient-to-r from-[#2D7A3A] to-[#1B4332] py-20 text-white">
+        <div className="mx-auto max-w-[1200px] px-6">
+          <div className="grid grid-cols-1 gap-12 text-center md:grid-cols-3">
+            <div className="rounded-2xl bg-white/10 p-8 backdrop-blur-sm">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-white/20">
+                <svg
+                  className="h-7 w-7"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="1" y="3" width="15" height="13" rx="2" />
+                  <path d="M16 8h4l3 3v5h-7V8z" />
+                  <circle cx="5.5" cy="18.5" r="1.5" />
+                  <circle cx="19.5" cy="18.5" r="1.5" />
+                </svg>
+              </div>
+              <h3 className="mb-2 text-lg font-semibold">All India Delivery</h3>
+              <p className="text-sm text-white/80">7-10 business days</p>
+            </div>
+
+            <div className="rounded-2xl bg-white/10 p-8 backdrop-blur-sm">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-white/20">
+                <svg
+                  className="h-7 w-7"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M12 1v22" />
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+              </div>
+              <h3 className="mb-2 text-lg font-semibold">Cash on Delivery</h3>
+              <p className="text-sm text-white/80">Pay when you receive</p>
+            </div>
+
+            <div className="rounded-2xl bg-white/10 p-8 backdrop-blur-sm">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-white/20">
+                <svg
+                  className="h-7 w-7"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <h3 className="mb-2 text-lg font-semibold">Secure Payment</h3>
+              <p className="text-sm text-white/80">Razorpay powered</p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </section>
     </div>
   );
 }

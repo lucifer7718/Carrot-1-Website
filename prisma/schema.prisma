@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String?
+  email     String    @unique
+  password  String
+  role      UserRole  @default(CUSTOMER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model SiteSettings {
+  id            String   @id
+  siteName      String   @default("Carrot")
+  logoText      String?
+  logoImage     String?
+  favicon       String?
+  headerTagline String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model HomeSlide {
+  id          String   @id @default(uuid())
+  title       String
+  subtitle    String?
+  buttonText  String?
+  buttonLink  String?
+  image       String
+  mobileImage String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  image       String?
+  bannerImage String?
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  name          String
+  slug          String      @unique
+  description   String
+  price         Int
+  comparePrice  Int?
+  images        String[]
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  sizes         String[]
+  featured      Boolean     @default(false)
+  inStock       Boolean     @default(true)
+  stockQuantity Int         @default(0)
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String?
+  sessionId String?
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  size      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id                String       @id @default(uuid())
+  orderNumber       String       @unique
+  customerName      String
+  email             String
+  phone             String
+  addressLine1      String
+  addressLine2      String?
+  city              String
+  state             String
+  postalCode        String
+  country           String       @default("India")
+  subtotal          Int
+  shipping          Int          @default(0)
+  total             Int
+  status            OrderStatus  @default(PENDING)
+  paymentId         String?
+  razorpayOrderId   String?
+  razorpaySignature String?
+  trackingNumber    String?
+  courierName       String?
+  items             OrderItem[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  name      String
+  price     Int
+  quantity  Int
+  size      String?
+  createdAt DateTime @default(now())
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+}
