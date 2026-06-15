@@ -1,9 +1,35 @@
 import { prisma } from "@/lib/prisma";
-import { saveUploadedFile } from "@/lib/upload";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+
+async function ensureAdmin() {
+  "use server";
+
+  const cookieStore = await cookies();
+  const adminCookie = cookieStore.get("admin-auth");
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminCookie || adminCookie.value !== adminPassword) {
+    throw new Error("Unauthorized");
+  }
+}
+
+async function fileToDataUrl(file: File | null) {
+  "use server";
+
+  if (!file || file.size === 0) return null;
+
+  const bytes = await file.arrayBuffer();
+  const base64 = Buffer.from(bytes).toString("base64");
+  const mimeType = file.type || "image/png";
+
+  return `data:${mimeType};base64,${base64}`;
+}
 
 async function saveSiteSettings(formData: FormData) {
   "use server";
+
+  await ensureAdmin();
 
   const siteName = String(formData.get("siteName") || "").trim();
   const logoText = String(formData.get("logoText") || "").trim();
@@ -14,8 +40,8 @@ async function saveSiteSettings(formData: FormData) {
 
   const existing = await prisma.siteSettings.findFirst();
 
-  const uploadedLogo = await saveUploadedFile(logoFile, "branding");
-  const uploadedFavicon = await saveUploadedFile(faviconFile, "branding");
+  const uploadedLogo = await fileToDataUrl(logoFile);
+  const uploadedFavicon = await fileToDataUrl(faviconFile);
 
   await prisma.siteSettings.upsert({
     where: { id: existing?.id || "default-site-settings" },
@@ -39,8 +65,13 @@ async function saveSiteSettings(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/categories");
   revalidatePath("/shop");
+  revalidatePath("/about");
+  revalidatePath("/admin");
   revalidatePath("/admin/settings");
 }
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function AdminSettingsPage() {
   const settings = await prisma.siteSettings.findFirst();
@@ -195,9 +226,9 @@ export default async function AdminSettingsPage() {
           <div className="rounded-2xl border border-[#e7e1d7] bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-[#1f1f1f]">Notes</h2>
             <div className="mt-4 space-y-3 text-sm text-[#666]">
-              <p>Upload a transparent PNG, JPG, WebP, or SVG-compatible image file for branding.</p>
+              <p>Upload a PNG, JPG, WebP, or other image file for branding.</p>
               <p>If no logo image is uploaded, the navbar will automatically show logo text.</p>
-              <p>Uploaded files are stored locally in your public uploads folder.</p>
+              <p>Branding updates now save directly in the database, so they are safer for Vercel deployment.</p>
             </div>
           </div>
         </div>

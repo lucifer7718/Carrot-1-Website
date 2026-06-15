@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const ALL_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
 export default function AddProductPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -21,6 +22,7 @@ export default function AddProductPage() {
 
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -50,6 +52,17 @@ export default function AddProductPage() {
     );
   }
 
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    setImageFile(file);
+
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+    } else {
+      setImagePreview("");
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -57,6 +70,42 @@ export default function AddProductPage() {
     setError("");
 
     try {
+      if (!formData.name.trim()) {
+        setError("Please enter product name");
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.description.trim()) {
+        setError("Please enter product description");
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.categoryName.trim()) {
+        setError("Please enter category name");
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.price || Number(formData.price) < 0) {
+        setError("Please enter a valid price");
+        setLoading(false);
+        return;
+      }
+
+      if (formData.comparePrice && Number(formData.comparePrice) < 0) {
+        setError("Please enter a valid compare price");
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.stockQuantity || Number(formData.stockQuantity) < 0) {
+        setError("Please enter a valid stock quantity");
+        setLoading(false);
+        return;
+      }
+
       if (!imageFile) {
         setError("Please upload a product image");
         setLoading(false);
@@ -70,11 +119,11 @@ export default function AddProductPage() {
       }
 
       const payload = new FormData();
-      payload.append("name", formData.name);
-      payload.append("description", formData.description);
+      payload.append("name", formData.name.trim());
+      payload.append("description", formData.description.trim());
       payload.append("price", formData.price);
       payload.append("comparePrice", formData.comparePrice);
-      payload.append("categoryName", formData.categoryName);
+      payload.append("categoryName", formData.categoryName.trim());
       payload.append("stockQuantity", formData.stockQuantity);
       payload.append("featured", String(formData.featured));
       payload.append("inStock", String(formData.inStock));
@@ -112,6 +161,11 @@ export default function AddProductPage() {
 
       setSelectedSizes([]);
       setImageFile(null);
+      setImagePreview("");
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
 
       router.push("/admin/products");
       router.refresh();
@@ -176,6 +230,7 @@ export default function AddProductPage() {
               value={formData.price}
               onChange={handleChange}
               placeholder="999"
+              min="0"
               className="w-full rounded-xl border border-[#ddd6cb] px-4 py-3 text-sm outline-none focus:border-[#C8470A]"
               required
             />
@@ -191,6 +246,7 @@ export default function AddProductPage() {
               value={formData.comparePrice}
               onChange={handleChange}
               placeholder="1299"
+              min="0"
               className="w-full rounded-xl border border-[#ddd6cb] px-4 py-3 text-sm outline-none focus:border-[#C8470A]"
             />
           </div>
@@ -220,6 +276,7 @@ export default function AddProductPage() {
               value={formData.stockQuantity}
               onChange={handleChange}
               placeholder="10"
+              min="0"
               className="w-full rounded-xl border border-[#ddd6cb] px-4 py-3 text-sm outline-none focus:border-[#C8470A]"
               required
             />
@@ -230,15 +287,26 @@ export default function AddProductPage() {
               Upload Product Image
             </label>
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/*"
-              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+              onChange={handleImageChange}
               className="w-full rounded-xl border border-[#ddd6cb] px-4 py-3 text-sm outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-[#C8470A] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#a63b08]"
               required
             />
             <p className="mt-2 text-xs text-[#777]">
               Upload one product image from your computer.
             </p>
+
+            {imagePreview ? (
+              <div className="mt-4">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="h-28 w-28 rounded-xl border border-[#ece6dd] object-cover"
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className="md:col-span-2">

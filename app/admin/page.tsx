@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -10,24 +13,40 @@ function formatPrice(amount: number) {
 }
 
 export default async function AdminDashboardPage() {
-  const [totalProducts, totalOrders, recentOrders, lowStockProducts, totalCategories, totalSlides] =
-    await Promise.all([
-      prisma.product.count(),
-      prisma.order.count(),
-      prisma.order.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: { items: true },
-      }),
-      prisma.product.findMany({
-        where: { stockQuantity: { lte: 5 } },
-        orderBy: { stockQuantity: "asc" },
-        take: 5,
-        select: { id: true, name: true, stockQuantity: true },
-      }),
-      prisma.category.count(),
-      prisma.homeSlide.count(),
-    ]);
+  const [
+    totalProducts,
+    totalOrders,
+    recentOrders,
+    lowStockProducts,
+    totalCategories,
+    totalSlides,
+  ] = await Promise.all([
+    prisma.product.count(),
+    prisma.order.count(),
+    prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        customerName: true,
+        createdAt: true,
+        status: true,
+        total: true,
+      },
+    }),
+    prisma.product.findMany({
+      where: { stockQuantity: { lte: 5 } },
+      orderBy: { stockQuantity: "asc" },
+      take: 5,
+      select: {
+        id: true,
+        name: true,
+        stockQuantity: true,
+      },
+    }),
+    prisma.category.count(),
+    prisma.homeSlide.count(),
+  ]);
 
   const stats = [
     {
@@ -89,7 +108,8 @@ export default async function AdminDashboardPage() {
       <div>
         <h1 className="text-3xl font-bold text-[#1f1f1f]">Dashboard</h1>
         <p className="mt-2 text-sm text-[#666]">
-          Welcome to your Carrot admin panel. This is where you manage store content, products, and orders.
+          Welcome to your Carrot admin panel. This is where you manage store content,
+          products, and orders.
         </p>
       </div>
 

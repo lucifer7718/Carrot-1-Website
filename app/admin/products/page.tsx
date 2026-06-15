@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import DeleteProductButton from "@/components/DeleteProductButton";
@@ -12,8 +15,22 @@ function formatPrice(amount: number) {
 
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
-    include: {
-      category: true,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      price: true,
+      sizes: true,
+      inStock: true,
+      stockQuantity: true,
+      featured: true,
+      images: true,
+      createdAt: true,
+      category: {
+        select: {
+          name: true,
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",

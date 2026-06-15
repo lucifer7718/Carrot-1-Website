@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import fs from "fs/promises";
-import path from "path";
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 function slugify(text: string) {
   return text
@@ -13,17 +13,47 @@ function slugify(text: string) {
     .replace(/-+/g, "-");
 }
 
+async function isAdmin() {
+  const cookieStore = await cookies();
+  const adminCookie = cookieStore.get("admin-auth");
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  return adminCookie && adminCookie.value === adminPassword;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!(await isAdmin())) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     const product = await prisma.product.findUnique({
       where: { id },
-      include: {
-        category: true,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        comparePrice: true,
+        images: true,
+        sizes: true,
+        stockQuantity: true,
+        featured: true,
+        inStock: true,
+        slug: true,
+        category: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
       },
     });
 
@@ -52,12 +82,21 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!(await isAdmin())) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     const existingProduct = await prisma.product.findUnique({
       where: { id },
-      include: {
-        category: true,
+      select: {
+        id: true,
+        slug: true,
+        images: true,
       },
     });
 
@@ -121,21 +160,20 @@ export async function PUT(
       );
     }
 
-    let imageUrl = existingProduct.images?.[0] || "";
+    let imageUrls = existingProduct.images || [];
 
     if (image && image.size > 0) {
-      const bytes = await image.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
-      await fs.mkdir(uploadDir, { recursive: true });
-
-      const safeFileName = `${Date.now()}-${image.name.replace(/\s+/g, "-")}`;
-      const filePath = path.join(uploadDir, safeFileName);
-
-      await fs.writeFile(filePath, buffer);
-
-      imageUrl = `/uploads/${safeFileName}`;
+      try {
+        const bytes = await image.arrayBuffer();
+        const base64 = Buffer.from(bytes).toString("base64");
+        const mimeType = image.type || "image/jpeg";
+        imageUrls = [`data:${mimeType};base64,${base64}`];
+      } catch {
+        return NextResponse.json(
+          { success: false, message: "Image processing failed" },
+          { status: 500 }
+        );
+      }
     }
 
     const nextSlugBase = slugify(name);
@@ -145,6 +183,7 @@ export async function PUT(
     while (true) {
       const existingSlugProduct = await prisma.product.findUnique({
         where: { slug: nextSlug },
+        select: { id: true },
       });
 
       if (!existingSlugProduct || existingSlugProduct.id === id) {
@@ -178,17 +217,32 @@ export async function PUT(
         description,
         price,
         comparePrice,
-        images: imageUrl ? [imageUrl] : [],
+        images: imageUrls,
         sizes,
         stockQuantity,
         featured,
         inStock,
         categoryId: category.id,
       },
-      include: {
-        category: true,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        images: true,
+        category: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/products");
+    revalidatePath("/products");
+    revalidatePath(`/products/${existingProduct.slug}`);
+    revalidatePath(`/products/${nextSlug}`);
 
     return NextResponse.json({
       success: true,
