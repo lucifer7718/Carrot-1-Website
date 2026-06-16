@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const password = body?.password;
+    const { password } = body;
     const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!password) {
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
     if (!adminPassword) {
       return NextResponse.json(
-        { success: false, message: "ADMIN_PASSWORD is not set on the server" },
+        { success: false, message: "Server configuration error" },
         { status: 500 }
       );
     }
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       message: "Login successful",
     });
 
-    response.cookies.set("admin-auth", "authenticated", {
+    response.cookies.set("admin-auth", adminPassword, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
